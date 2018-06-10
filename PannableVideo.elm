@@ -167,10 +167,10 @@ touchesDifference : ( Touch, Touch ) -> ( Touch, Touch ) -> ( Float, Float )
 touchesDifference ( a, b ) ( c, d ) =
     let
         fst =
-            distance a.clientPos c.clientPos
+            distance a.clientPos b.clientPos
 
         sec =
-            distance b.clientPos d.clientPos
+            distance c.clientPos d.clientPos
     in
     ( fst, sec )
 
@@ -208,8 +208,10 @@ findEventWith touches touch =
 
 
 
--- handlePinchZoom : State -> Touch.Event -> { state: State, scale: Scale, delta: Coordinate }
--- handlePinchZoom state ev =
---         let
---             point1 = List.head List.filter (\m -> m.identifier == ev.changedTouches) state.touches
---         in
+handlePinchZoom : State -> Touch.Event ->   State
+handlePinchZoom state ev =
+        case deltaFrom state ev of
+            Just (a, b) -> { state | scale = a / b}
+                
+            Nothing -> state
+

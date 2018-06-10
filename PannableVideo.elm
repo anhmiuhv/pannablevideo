@@ -1,7 +1,7 @@
 module PannableVideo exposing (Coordinate, Msg, State, initialState, pannableVideo, processEvent)
 
-import Html exposing (Html, div, video)
-import Html.Attributes exposing (controls, src, style)
+import Html exposing (Attribute, Html, div, video)
+import Html.Attributes exposing (style)
 import Touch exposing (Event, Touch, onEnd, onMove, onStart)
 
 
@@ -62,8 +62,8 @@ scaleS sc =
     "scale(" ++ s ++ "," ++ s ++ ")"
 
 
-pannableVideo : (Msg -> msg) -> State -> String -> Html msg
-pannableVideo emitter state source =
+pannableVideo : (Msg -> msg) -> State -> List (Attribute msg) -> List (Html msg) -> Html msg
+pannableVideo emitter state attr html =
     let
         x =
             state.center.x + state.coords.x
@@ -75,14 +75,14 @@ pannableVideo emitter state source =
             state.sz
     in
     video
-        [ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
-        , src source
-        , Touch.onStart (emitter << StartAt)
-        , Touch.onMove (emitter << MoveAt)
-        , Touch.onEnd (emitter << EndAt)
-        , controls True
-        ]
-        []
+        ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
+         , Touch.onStart (emitter << StartAt)
+         , Touch.onMove (emitter << MoveAt)
+         , Touch.onEnd (emitter << EndAt)
+         ]
+            ++ attr
+        )
+        html
 
 
 (#+) : Coordinate -> Coordinate -> Coordinate

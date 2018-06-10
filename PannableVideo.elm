@@ -142,6 +142,7 @@ touchCoordinates touchEvent =
         |> Maybe.withDefault ( 0, 0 )
         |> convert
 
+type ClearCache = Yes | No (Maybe (Float, Float))
 
 deltaFrom : State -> Touch.Event -> Maybe ( Float, Float )
 deltaFrom state ev =
@@ -211,7 +212,6 @@ findEventWith touches touch =
 handlePinchZoom : State -> Touch.Event ->   State
 handlePinchZoom state ev =
         case deltaFrom state ev of
-            Just (a, b) -> { state | scale = a / b}
-                
+            Just (a, b) -> { state | scale = a / b}             
             Nothing -> state
 

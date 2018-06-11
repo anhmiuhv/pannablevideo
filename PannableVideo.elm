@@ -1,7 +1,8 @@
 module PannableVideo exposing (Coordinate, Msg, State, initialState, pannableVideo, processEvent)
 
+import Debug exposing (..)
 import Html exposing (Attribute, Html, div, video)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (controls, src, style)
 import Touch exposing (Event, Touch, onEnd, onMove, onStart)
 
 
@@ -21,6 +22,8 @@ type alias State =
     , previous : Coordinate
     , center : Coordinate
     , touches : List Touch
+    , pinch : Bool
+    , iden : Int
     }
 
 
@@ -40,6 +43,8 @@ initialState =
         , y = 0
         }
     , touches = []
+    , pinch = False
+    , iden = -1
     }
 
 
@@ -62,8 +67,17 @@ scaleS sc =
     "scale(" ++ s ++ "," ++ s ++ ")"
 
 
-pannableVideo : (Msg -> msg) -> State -> List (Attribute msg) -> List (Html msg) -> Html msg
-pannableVideo emitter state attr html =
+pannableVideo : (Msg -> msg) -> State -> String -> Html msg
+pannableVideo emitter state string =
+    advancedPannableVideo emitter
+        state
+        [ src string
+        ]
+        []
+
+
+advancedPannableVideo : (Msg -> msg) -> State -> List (Attribute msg) -> List (Html msg) -> Html msg
+advancedPannableVideo emitter state attr html =
     let
         x =
             state.center.x + state.coords.x
@@ -74,15 +88,17 @@ pannableVideo emitter state attr html =
         sc =
             state.sz
     in
-    video
-        ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
-         , Touch.onStart (emitter << StartAt)
-         , Touch.onMove (emitter << MoveAt)
-         , Touch.onEnd (emitter << EndAt)
-         ]
-            ++ attr
-        )
-        html
+    div [ style [ ( "overflow", "hidden" ), ( "width", "720px" ), ( "height", "1280px" ) ] ]
+        [ video
+            ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
+             , Touch.onStart (emitter << StartAt)
+             , Touch.onMove (emitter << MoveAt)
+             , Touch.onEnd (emitter << EndAt)
+             ]
+                ++ attr
+            )
+            html
+        ]
 
 
 (#+) : Coordinate -> Coordinate -> Coordinate
@@ -109,11 +125,24 @@ processEvent ms state =
                             else
                                 []
                            )
+
+                iden =
+                    if state.iden == -1 then
+                        extractIden state c
+                    else
+                        state.iden
             in
-            { state | previous = touchCoordinates c }
+            { state | iden = iden, previous = touchCoordinates state c, touches = touchCache }
 
         MoveAt c ->
-            { state | coords = touchCoordinates c #- state.previous }
+            let
+                state2 =
+                    handlePinchZoom state c
+
+                co =
+                    touchCoordinates state2 c #- state2.previous
+            in
+            { state2 | coords = co }
 
         EndAt c ->
             { state | center = state.center #+ state.coords, coords = origin }
@@ -130,21 +159,46 @@ type Msg
     | EndAt Touch.Event
 
 
+
+----- Internal helpers ----
+
+
 convert : ( Float, Float ) -> Coordinate
 convert ( x, y ) =
     { x = x, y = y }
 
 
-touchCoordinates : Touch.Event -> Coordinate
-touchCoordinates touchEvent =
-    List.head touchEvent.changedTouches
+touchCoordinates : State -> Touch.Event -> Coordinate
+touchCoordinates state touchEvent =
+    findTouchWithId state.iden touchEvent.changedTouches
         |> Maybe.map .clientPos
         |> Maybe.withDefault ( 0, 0 )
         |> convert
 
-type ClearCache = Yes | No (Maybe (Float, Float))
 
-deltaFrom : State -> Touch.Event -> Maybe ( Float, Float )
+extractIden : State -> Touch.Event -> Int
+extractIden state touchEvent =
+    findTouchWithId state.iden touchEvent.changedTouches
+        |> Maybe.map .identifier
+        |> Maybe.withDefault -1
+
+
+findTouchWithId : Int -> List Touch -> Maybe Touch
+findTouchWithId iden touches =
+    case List.filter (\m -> m.identifier == iden) touches of
+        [] ->
+            List.head touches
+
+        a :: _ ->
+            Just a
+
+
+type ClearCache
+    = Yes
+    | No (Maybe ( Float, Float ))
+
+
+deltaFrom : State -> Touch.Event -> ClearCache
 deltaFrom state ev =
     if List.length ev.changedTouches == 2 && List.length ev.targetTouches == 2 then
         let
@@ -154,9 +208,9 @@ deltaFrom state ev =
             pairTouches =
                 pairOfTouch ev.changedTouches state.touches
         in
-        Maybe.map2 touchesDifference eventTouches pairTouches
+        No (Maybe.map2 touchesDifference eventTouches pairTouches)
     else
-        Nothing
+        Yes
 
 
 distance : ( Float, Float ) -> ( Float, Float ) -> Float
@@ -208,10 +262,16 @@ findEventWith touches touch =
         |> List.head
 
 
-
-handlePinchZoom : State -> Touch.Event ->   State
+handlePinchZoom : State -> Touch.Event -> State
 handlePinchZoom state ev =
-        case deltaFrom state ev of
-            Just (a, b) -> { state | scale = a / b}             
-            Nothing -> state
+    case deltaFrom state ev of
+        No b ->
+            case b of
+                Just ( a, c ) ->
+                    { state | sz = a / c, pinch = True }
 
+                Nothing ->
+                    { state | pinch = True }
+
+        Yes ->
+            { state | touches = [], pinch = False }

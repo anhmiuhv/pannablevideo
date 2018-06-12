@@ -6,7 +6,3 @@ repl-temp-*
 .vscode/
 
 *~
-
-test.mp4
-index.html
-Main.elm

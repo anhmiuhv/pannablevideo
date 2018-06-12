@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "a video element that is pannable and zoomable",
     "repository": "https://github.com/anhmiuhv/pannablevideo.git",
     "license": "BSD3",

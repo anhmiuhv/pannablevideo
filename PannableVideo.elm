@@ -70,9 +70,7 @@ type alias State =
 
 {-| Simple VideoInfo object.
 
-    Take in:
-
-        source of the video -> size in px
+Take in: source of the video -> size in px
 
 -}
 simpleVideoInfo : String -> ( Int, Int ) -> VideoInfo
@@ -128,7 +126,7 @@ scaleS sc =
     "scale(" ++ s ++ "," ++ s ++ ")"
 
 
-{-| the zoomable, pannable video element. Look for State and VideoInfo below
+{-| The zoomable, pannable video element. Look for State and VideoInfo below
 -}
 pannableVideo : (Msg -> msg) -> State -> VideoInfo -> Html msg
 pannableVideo emitter state ({ videoSrc, videoSize } as info) =
@@ -241,9 +239,7 @@ origin =
     { x = 0, y = 0 }
 
 
-{-|
-
-    Internal Event Manager. Should be sent to processEvent in the update
+{-| Internal Event Manager. Should be sent to processEvent in the update
 
 -}
 type Msg

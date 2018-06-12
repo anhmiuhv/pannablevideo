@@ -55,7 +55,8 @@ type alias VideoInfo =
 
 {-| Internal state of the element. Should be part of model
 -}
-type alias State =
+type State =
+   State
     { coords : Coordinate
     , sz : Scale
     , previous : Coordinate
@@ -85,7 +86,7 @@ simpleVideoInfo src size =
 {-| The initial state to be put into init
 -}
 initialState : State
-initialState =
+initialState = State
     { coords =
         { x = 0
         , y = 0
@@ -146,7 +147,7 @@ pixelToCSS px =
 {-| More advanced video element if you want to style, or do something I can't think of
 -}
 advancedPannableVideo : (Msg -> msg) -> State -> VideoInfo -> List (Attribute msg) -> List (Html msg) -> Html msg
-advancedPannableVideo emitter state info attr html =
+advancedPannableVideo emitter (State state) info attr html =
     let
         x =
             clamp rangeMinX rangeX <| state.center.x + state.coords.x
@@ -207,7 +208,7 @@ infixr 9 #-
 {-| Process Msg in the update function
 -}
 processEvent : Msg -> State -> State
-processEvent ms state =
+processEvent ms (State state) =
     case ms of
         StartAt c ->
             let
@@ -221,17 +222,17 @@ processEvent ms state =
 
                 iden =
                     if state.iden == -1 then
-                        extractIden state c
+                        extractIden (State state) c
                     else
                         state.iden
             in
-            { state | iden = iden, previous = touchCoordinates state c, touches = touchCache }
+            State { state | iden = iden, previous = touchCoordinates (State state) c, touches = touchCache }
 
         MoveAt c ->
-            handlePinchZoom state c
+            handlePinchZoom (State state) c
 
         EndAt c ->
-            { state | center = state.center #+ state.coords, coords = origin }
+            State { state | center = state.center #+ state.coords, coords = origin }
 
 
 origin : { x : Float, y : Float }
@@ -258,7 +259,7 @@ convert ( x, y ) =
 
 
 touchCoordinates : State -> Touch.Event -> Coordinate
-touchCoordinates state touchEvent =
+touchCoordinates (State state) touchEvent =
     findTouchWithId state.iden touchEvent.changedTouches
         |> Maybe.map .clientPos
         |> Maybe.withDefault ( 0, 0 )
@@ -266,7 +267,7 @@ touchCoordinates state touchEvent =
 
 
 extractIden : State -> Touch.Event -> Int
-extractIden state touchEvent =
+extractIden (State state) touchEvent =
     findTouchWithId state.iden touchEvent.changedTouches
         |> Maybe.map .identifier
         |> Maybe.withDefault -1
@@ -294,7 +295,7 @@ type alias AveAndDist =
 
 
 deltaFrom : State -> Touch.Event -> DoNothing
-deltaFrom state ev =
+deltaFrom (State state) ev =
     if List.length ev.changedTouches == 2 && List.length ev.targetTouches == 2 then
         let
             eventTouches =
@@ -376,22 +377,22 @@ findEventWith touches touch =
 
 
 handlePinchZoom : State -> Touch.Event -> State
-handlePinchZoom state ev =
+handlePinchZoom (State state) ev =
     let
         co =
             if List.length ev.targetTouches == 2 then
                 state.coords
             else
-                touchCoordinates state ev #- state.previous
+                touchCoordinates (State state) ev #- state.previous
     in
-    case deltaFrom state ev of
+    case deltaFrom (State state) ev of
         No { dist, aver } ->
             case dist of
                 Just ( a, c ) ->
-                    { state | iden = -1, sz = a / c, pinch = True, coords = Maybe.withDefault state.coords aver #- state.previous }
+                    State { state | iden = -1, sz = a / c, pinch = True, coords = Maybe.withDefault state.coords aver #- state.previous }
 
                 Nothing ->
-                    { state | pinch = False, touches = [] }
+                    State { state | pinch = False, touches = [] }
 
         Yes ->
-            { state | pinch = False, coords = co }
+            State { state | pinch = False, coords = co }

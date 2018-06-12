@@ -1,3 +1,6 @@
 # PannableVideo
 
-A pannable, zoomable video component. Also include screenshot capturing functionality
+A pannable, zoomable video component. 
+
+Future work:
+* include screenshot capturing functionality

@@ -1,6 +1,5 @@
-module PannableVideo exposing (Coordinate, Msg, State, initialState, pannableVideo, processEvent)
+module PannableVideo exposing (Msg, State, initialState, pannableVideo, processEvent, VideoInfo, simpleVideoInfo, advancedPannableVideo)
 
-import Debug exposing (..)
 import Html exposing (Attribute, Html, div, video)
 import Html.Attributes exposing (controls, src, style)
 import Touch exposing (Event, Touch, onEnd, onMove, onStart)
@@ -16,6 +15,14 @@ type alias Scale =
     Float
 
 
+type alias VideoInfo =
+    { videoSrc : String
+    , videoSize : ( Int, Int )
+    , minScale : Float
+    , maxScale : Float
+    }
+
+
 type alias State =
     { coords : Coordinate
     , sz : Scale
@@ -24,6 +31,17 @@ type alias State =
     , touches : List Touch
     , pinch : Bool
     , iden : Int
+    , rangeX : Float
+    , rangeY : Float
+    }
+
+
+simpleVideoInfo : String -> ( Int, Int ) -> VideoInfo
+simpleVideoInfo src size =
+    { videoSrc = src
+    , videoSize = size
+    , minScale = 1
+    , maxScale = 5.0
     }
 
 
@@ -45,6 +63,8 @@ initialState =
     , touches = []
     , pinch = False
     , iden = -1
+    , rangeX = 0.0
+    , rangeY = 0.0
     }
 
 
@@ -64,41 +84,62 @@ scaleS sc =
         s =
             toString sc
     in
-        "scale(" ++ s ++ "," ++ s ++ ")"
+    "scale(" ++ s ++ "," ++ s ++ ")"
 
 
-pannableVideo : (Msg -> msg) -> State -> String -> Html msg
-pannableVideo emitter state string =
+pannableVideo : (Msg -> msg) -> State -> VideoInfo -> Html msg
+pannableVideo emitter state ({ videoSrc, videoSize } as info) =
     advancedPannableVideo emitter
         state
-        [ src string
+        info
+        [ src videoSrc
         ]
         []
 
 
-advancedPannableVideo : (Msg -> msg) -> State -> List (Attribute msg) -> List (Html msg) -> Html msg
-advancedPannableVideo emitter state attr html =
+pixelToCSS : Int -> String
+pixelToCSS px =
+    toString px ++ "px"
+
+
+advancedPannableVideo : (Msg -> msg) -> State -> VideoInfo -> List (Attribute msg) -> List (Html msg) -> Html msg
+advancedPannableVideo emitter state info attr html =
     let
         x =
-            state.center.x + state.coords.x
+            clamp rangeMinX rangeX <| state.center.x + state.coords.x
 
         y =
-            state.center.y + state.coords.y
+            clamp rangeMinY rangeY <| state.center.y + state.coords.y
 
         sc =
-            state.sz
+            clamp info.minScale info.maxScale state.sz
+
+        ( w, h ) =
+            info.videoSize
+
+        transform x =
+            max 0 (round (toFloat x * state.sz) - x)
+                |> toFloat
+                |> flip (/) 2
+                |> round
+                |> toFloat
+
+        rangeX = transform w
+        rangeMinX = 0 - rangeX
+        rangeY = transform h
+        rangeMinY = 0 - rangeY
     in
-        div [ style [ ( "overflow", "hidden" ), ( "width", "1280px" ), ( "height", "720px" ) ] ]
-            [ video
-                ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
-                 , Touch.onStart (emitter << StartAt)
-                 , Touch.onMove (emitter << MoveAt)
-                 , Touch.onEnd (emitter << EndAt)
-                 ]
-                    ++ attr
-                )
-                html
-            ]
+    div [ style [ ( "overflow", "hidden" ), ( "width", pixelToCSS w ), ( "height", pixelToCSS h ) ] ]
+        [ video
+            ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
+             , Touch.onStart (emitter << StartAt)
+             , Touch.onMove (emitter << MoveAt)
+             , Touch.onEnd (emitter << EndAt)
+             ]
+                ++ attr
+            )
+            html
+        ]
 
 
 (#+) : Coordinate -> Coordinate -> Coordinate
@@ -132,22 +173,10 @@ processEvent ms state =
                     else
                         state.iden
             in
-                { state | iden = iden, previous = touchCoordinates state c, touches = touchCache }
+            { state | iden = iden, previous = touchCoordinates state c, touches = touchCache }
 
         MoveAt c ->
-            let
-                state2 =
-                    handlePinchZoom state c
-
-                co =
-                    if state2.pinch then
-                        state2.coords
-                    else
-                        touchCoordinates state2 c #- state2.previous
-                iden = if state2.pinch then -1
-                    else state2.iden
-            in
-                { state2 | coords = co, iden = iden }
+            handlePinchZoom state c
 
         EndAt c ->
             { state | center = state.center #+ state.coords, coords = origin }
@@ -219,10 +248,10 @@ deltaFrom state ev =
             pairTouches =
                 pairOfTouch ev.changedTouches state.touches
         in
-            No
-                { dist = (Maybe.map2 touchesDifference eventTouches pairTouches)
-                , aver = middlePoint eventTouches
-                }
+        No
+            { dist = Maybe.map2 touchesDifference eventTouches pairTouches
+            , aver = middlePoint eventTouches
+            }
     else
         Yes
 
@@ -232,15 +261,18 @@ distance ( a, b ) ( c, d ) =
     sqrt ((a - c) ^ 2 + (b - d) ^ 2)
 
 
-average : ( Float, Float ) -> ( Float, Float ) -> (Float, Float)
+average : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
 average ( a, b ) ( c, d ) =
     ( (a + c) / 2, (b + d) / 2 )
 
-middlePoint : Maybe (Touch, Touch) -> Maybe Coordinate
+
+middlePoint : Maybe ( Touch, Touch ) -> Maybe Coordinate
 middlePoint touches =
     Maybe.map
-        (\(a, b) -> average a.clientPos b.clientPos
-        |> convert)
+        (\( a, b ) ->
+            average a.clientPos b.clientPos
+                |> convert
+        )
         touches
 
 
@@ -253,7 +285,7 @@ touchesDifference ( a, b ) ( c, d ) =
         sec =
             distance c.clientPos d.clientPos
     in
-        ( fst, sec )
+    ( fst, sec )
 
 
 pairOfTouch : List Touch -> List Touch -> Maybe ( Touch, Touch )
@@ -262,7 +294,7 @@ pairOfTouch eventTouches stateTouches =
         results =
             List.filterMap (findEventWith stateTouches) eventTouches
     in
-        listToTuple results
+    listToTuple results
 
 
 listToTuple : List Touch -> Maybe ( Touch, Touch )
@@ -275,10 +307,10 @@ listToTuple touches =
             List.tail touches
                 |> Maybe.andThen List.head
     in
-        if List.length touches == 2 then
-            Maybe.map2 (,) h t
-        else
-            Nothing
+    if List.length touches == 2 then
+        Maybe.map2 (,) h t
+    else
+        Nothing
 
 
 findEventWith : List Touch -> Touch -> Maybe Touch
@@ -290,14 +322,21 @@ findEventWith touches touch =
 
 handlePinchZoom : State -> Touch.Event -> State
 handlePinchZoom state ev =
+    let
+        co =
+            if List.length ev.targetTouches == 2 then
+                state.coords
+            else
+                touchCoordinates state ev #- state.previous
+    in
     case deltaFrom state ev of
         No { dist, aver } ->
             case dist of
                 Just ( a, c ) ->
-                    { state | sz = a / c, pinch = True, coords = Maybe.withDefault state.coords aver #- state.previous }
+                    { state | iden = -1, sz = a / c, pinch = True, coords = Maybe.withDefault state.coords aver #- state.previous }
 
                 Nothing ->
-                    { state | pinch = log "here" False, touches = [] }
+                    { state | pinch = False, touches = [] }
 
         Yes ->
-            { state | pinch = False }
+            { state | pinch = False, coords = co }

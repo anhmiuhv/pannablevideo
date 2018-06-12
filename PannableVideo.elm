@@ -1,4 +1,26 @@
-module PannableVideo exposing (Msg, State, initialState, pannableVideo, processEvent, VideoInfo, simpleVideoInfo, advancedPannableVideo)
+module PannableVideo exposing (Msg, State, VideoInfo, advancedPannableVideo, initialState, pannableVideo, processEvent, simpleVideoInfo)
+
+{-| This library provide a pannable and zoomable video element.
+
+Look in [examples][] to see how to use this library
+[examples]: https://github.com/anhmiuhv/pannablevideo/tree/master/examples
+
+
+# View
+
+@docs pannableVideo, advancedPannableVideo
+
+
+# Model
+
+@docs State, VideoInfo, initialState, simpleVideoInfo
+
+
+# Events
+
+@docs Msg, processEvent
+
+-}
 
 import Html exposing (Attribute, Html, div, video)
 import Html.Attributes exposing (controls, src, style)
@@ -15,6 +37,14 @@ type alias Scale =
     Float
 
 
+{-| Represent the info of the video. This currently includes:
+
+  - videoSrc : the source of the video
+  - videoSize : the dimension of the video in pixel
+  - minScale : minimum zoom scale
+  - maxSCale : maximum zoom scale
+
+-}
 type alias VideoInfo =
     { videoSrc : String
     , videoSize : ( Int, Int )
@@ -23,6 +53,8 @@ type alias VideoInfo =
     }
 
 
+{-| Internal state of the element. Should be part of model
+-}
 type alias State =
     { coords : Coordinate
     , sz : Scale
@@ -36,6 +68,13 @@ type alias State =
     }
 
 
+{-| Simple VideoInfo object.
+
+    Take in:
+
+        source of the video -> size in px
+
+-}
 simpleVideoInfo : String -> ( Int, Int ) -> VideoInfo
 simpleVideoInfo src size =
     { videoSrc = src
@@ -45,6 +84,8 @@ simpleVideoInfo src size =
     }
 
 
+{-| The initial state to be put into init
+-}
 initialState : State
 initialState =
     { coords =
@@ -87,6 +128,8 @@ scaleS sc =
     "scale(" ++ s ++ "," ++ s ++ ")"
 
 
+{-| the zoomable, pannable video element. Look for State and VideoInfo below
+-}
 pannableVideo : (Msg -> msg) -> State -> VideoInfo -> Html msg
 pannableVideo emitter state ({ videoSrc, videoSize } as info) =
     advancedPannableVideo emitter
@@ -102,6 +145,8 @@ pixelToCSS px =
     toString px ++ "px"
 
 
+{-| More advanced video element if you want to style, or do something I can't think of
+-}
 advancedPannableVideo : (Msg -> msg) -> State -> VideoInfo -> List (Attribute msg) -> List (Html msg) -> Html msg
 advancedPannableVideo emitter state info attr html =
     let
@@ -124,10 +169,17 @@ advancedPannableVideo emitter state info attr html =
                 |> round
                 |> toFloat
 
-        rangeX = transform w
-        rangeMinX = 0 - rangeX
-        rangeY = transform h
-        rangeMinY = 0 - rangeY
+        rangeX =
+            transform w
+
+        rangeMinX =
+            0 - rangeX
+
+        rangeY =
+            transform h
+
+        rangeMinY =
+            0 - rangeY
     in
     div [ style [ ( "overflow", "hidden" ), ( "width", pixelToCSS w ), ( "height", pixelToCSS h ) ] ]
         [ video
@@ -154,6 +206,8 @@ infixr 9 #+
 infixr 9 #-
 
 
+{-| Process Msg in the update function
+-}
 processEvent : Msg -> State -> State
 processEvent ms state =
     case ms of
@@ -187,6 +241,11 @@ origin =
     { x = 0, y = 0 }
 
 
+{-|
+
+    Internal Event Manager. Should be sent to processEvent in the update
+
+-}
 type Msg
     = StartAt Touch.Event
     | MoveAt Touch.Event

@@ -62,7 +62,6 @@ type State =
     , previous : Coordinate
     , center : Coordinate
     , touches : List Touch
-    , pinch : Bool
     , iden : Int
     , rangeX : Float
     , rangeY : Float
@@ -101,7 +100,6 @@ initialState = State
         , y = 0
         }
     , touches = []
-    , pinch = False
     , iden = -1
     , rangeX = 0.0
     , rangeY = 0.0
@@ -389,10 +387,10 @@ handlePinchZoom (State state) ev =
         No { dist, aver } ->
             case dist of
                 Just ( a, c ) ->
-                    State { state | iden = -1, sz = a / c, pinch = True, coords = Maybe.withDefault state.coords aver #- state.previous }
+                    State { state | iden = -1, sz = a / c, coords = Maybe.withDefault state.coords aver #- state.previous }
 
                 Nothing ->
-                    State { state | pinch = False, touches = [] }
+                    State { state | touches = [] }
 
         Yes ->
-            State { state | pinch = False, coords = co }
+            State { state | coords = co }

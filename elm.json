@@ -3,7 +3,7 @@
     "name": "anhmiuhv/pannablevideo",
     "summary": "a video element that is pannable and zoomable",
     "license": "BSD-3-Clause",
-    "version": "3.0.0",
+    "version": "2.0.1",
     "exposed-modules": [
         "PannableVideo"
     ],

@@ -1,9 +1,13 @@
-module PannableVideo exposing (Msg, State, VideoInfo, advancedPannableVideo, initialState, pannableVideo, processEvent, simpleVideoInfo)
+module PannableVideo exposing
+    ( pannableVideo, advancedPannableVideo
+    , State, VideoInfo, initialState, simpleVideoInfo
+    , Msg, processEvent
+    )
 
 {-| This library provide a pannable and zoomable video element.
 
-Look in [examples][] to see how to use this library
-[examples]: https://github.com/anhmiuhv/pannablevideo/tree/master/examples
+Look in [examples] to see how to use this library
+[examples]: <https://github.com/anhmiuhv/pannablevideo/tree/master/examples>
 
 
 # View
@@ -55,17 +59,17 @@ type alias VideoInfo =
 
 {-| Internal state of the element. Should be part of model
 -}
-type State =
-   State
-    { coords : Coordinate
-    , sz : Scale
-    , previous : Coordinate
-    , center : Coordinate
-    , touches : List Touch
-    , iden : Int
-    , rangeX : Float
-    , rangeY : Float
-    }
+type State
+    = State
+        { coords : Coordinate
+        , sz : Scale
+        , previous : Coordinate
+        , center : Coordinate
+        , touches : List Touch
+        , iden : Int
+        , rangeX : Float
+        , rangeY : Float
+        }
 
 
 {-| Simple VideoInfo object.
@@ -85,25 +89,26 @@ simpleVideoInfo src size =
 {-| The initial state to be put into init
 -}
 initialState : State
-initialState = State
-    { coords =
-        { x = 0
-        , y = 0
+initialState =
+    State
+        { coords =
+            { x = 0
+            , y = 0
+            }
+        , sz = 1
+        , previous =
+            { x = 0
+            , y = 0
+            }
+        , center =
+            { x = 0
+            , y = 0
+            }
+        , touches = []
+        , iden = -1
+        , rangeX = 0.0
+        , rangeY = 0.0
         }
-    , sz = 1
-    , previous =
-        { x = 0
-        , y = 0
-        }
-    , center =
-        { x = 0
-        , y = 0
-        }
-    , touches = []
-    , iden = -1
-    , rangeX = 0.0
-    , rangeY = 0.0
-    }
 
 
 translateX : Float -> String
@@ -162,7 +167,7 @@ advancedPannableVideo emitter (State state) info attr html =
         transform x =
             max 0 (round (toFloat x * state.sz) - x)
                 |> toFloat
-                |> flip (/) 2
+                |> (\a -> (/) a 2)
                 |> round
                 |> toFloat
 
@@ -178,9 +183,9 @@ advancedPannableVideo emitter (State state) info attr html =
         rangeMinY =
             0 - rangeY
     in
-    div [ style [ ( "overflow", "hidden" ), ( "width", pixelToCSS w ), ( "height", pixelToCSS h ) ] ]
+    div [ style "overflow" "hidden", style "width" (pixelToCSS w), style "height" (pixelToCSS h) ]
         [ video
-            ([ style [ ( "transform", translateX x ++ translateY y ++ scaleS sc ) ]
+            ([ style "transform" (translateX x ++ translateY y ++ scaleS sc)
              , Touch.onStart (emitter << StartAt)
              , Touch.onMove (emitter << MoveAt)
              , Touch.onEnd (emitter << EndAt)
@@ -194,12 +199,16 @@ advancedPannableVideo emitter (State state) info attr html =
 (#+) : Coordinate -> Coordinate -> Coordinate
 (#+) c1 c2 =
     { x = c1.x + c2.x, y = c1.y + c2.y }
+
+
 infixr 9 #+
 
 
 (#-) : Coordinate -> Coordinate -> Coordinate
 (#-) c1 c2 =
     { x = c1.x - c2.x, y = c1.y - c2.y }
+
+
 infixr 9 #-
 
 
@@ -214,6 +223,7 @@ processEvent ms (State state) =
                     state.touches
                         ++ (if List.length c.targetTouches == 2 then
                                 c.targetTouches
+
                             else
                                 []
                            )
@@ -221,6 +231,7 @@ processEvent ms (State state) =
                 iden =
                     if state.iden == -1 then
                         extractIden (State state) c
+
                     else
                         state.iden
             in
@@ -239,7 +250,6 @@ origin =
 
 
 {-| Internal Event Manager. Should be sent to processEvent in the update
-
 -}
 type Msg
     = StartAt Touch.Event
@@ -306,6 +316,7 @@ deltaFrom (State state) ev =
             { dist = Maybe.map2 touchesDifference eventTouches pairTouches
             , aver = middlePoint eventTouches
             }
+
     else
         Yes
 
@@ -362,7 +373,8 @@ listToTuple touches =
                 |> Maybe.andThen List.head
     in
     if List.length touches == 2 then
-        Maybe.map2 (,) h t
+        Maybe.map2 (\a b -> ( a, b )) h t
+
     else
         Nothing
 
@@ -380,6 +392,7 @@ handlePinchZoom (State state) ev =
         co =
             if List.length ev.targetTouches == 2 then
                 state.coords
+
             else
                 touchCoordinates (State state) ev #- state.previous
     in

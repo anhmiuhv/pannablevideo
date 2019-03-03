@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 
 import Html exposing (..)
 import PannableVideo exposing (..)
@@ -35,7 +35,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    PannableVideo.pannableVideo (\m -> H m) model (simpleVideoInfo "test.mp4" (720, 1280))
+    PannableVideo.pannableVideo (\m -> H m) model (simpleVideoInfo "test.mp4" ( 720, 1280 ))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -45,4 +45,6 @@ update msg model =
             ( PannableVideo.processEvent m model, Cmd.none )
 
         NoOp ->
-            model ! []
+            ( model
+            , Cmd.none
+            )

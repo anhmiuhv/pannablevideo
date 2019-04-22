@@ -6,3 +6,5 @@ repl-temp-*
 .vscode/
 
 *~
+/Main.elm
+/index.html

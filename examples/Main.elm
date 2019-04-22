@@ -1,16 +1,15 @@
 module Main exposing (..)
 
 import Html exposing (..)
+import Browser
 import PannableVideo exposing (..)
 
 
-main : Program Never Model Msg
 main =
-    Html.program
+    Browser.sandbox
         { init = init
         , view = view
         , update = update
-        , subscriptions = subscriptions
         }
 
 
@@ -28,21 +27,18 @@ init =
     ( PannableVideo.initialState, Cmd.none )
 
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
 
 
-view : Model -> Html Msg
-view model =
+view : (Model, Cmd msg) -> Html Msg
+view (model, msg) =
     PannableVideo.pannableVideo (\m -> H m) model (simpleVideoInfo "test.mp4" (720, 1280))
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+update msg (model, mg) =
     case msg of
         H m ->
             ( PannableVideo.processEvent m model, Cmd.none )
 
         NoOp ->
-            model ! []
+            (model, Cmd.none)
